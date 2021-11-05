@@ -25,7 +25,7 @@ a3 3 Steam Pid output
 int steam_fill = A1;
 int steam_therm = A2;
 int steam_pid = A3; //Steam Pid output
-int brew_from_PID = A4
+int brew_from_PID = A4;
 
 //digitals
 int pump_brew = 3;// pwm
@@ -46,6 +46,7 @@ float PID_error = 0;
 float previous_error = 0;
 float elapsedTime, Time, timePrev;
 int PID_value = 0;
+
 
 //PID constants
 int kp = 9.1;
@@ -89,69 +90,83 @@ Time = millis();
 
 }
 
+int control_BREW()
+{  
+  if ( digitalRead(brew_from_PID) )
+  { // pour that coffee
+    digitalWrite(pump_brew, HIGH);
+    digitalWrite(brew_valve, HIGH);
+  } else {
+    digitalWrite(pump_brew, LOW);
+    digitalWrite(brew_valve, LOW);
+  }
+  return 1;
+}
+
+int control_STEAM_FILL_TANK()
+{
+  if ( digitalRead(steam_fill) )
+  { //fill that steam tank
+    digitalWrite(pump_steam, HIGH);
+  } else {
+    digitalWrite(pump_steam, LOW);
+  }
+  return 1;
+}
+
+float STEAM_TEMP_CONTROL(float pid_error)
+{
+  // determine current temp of steam tank
+  ThermValue = analogRead(steam_therm); //raw value from Voltage Divider (0-5)
+  temperature_read = (1/((1/298.00)+(1/4100.00)*log(1024.00/ThermValue-1.00)))- 273.00;
+
+  //calculate the error between the setpoint and the real value
+  PID_error = set_temperature - temperature_read;
+  //Calculate the P value
+  PID_p = kp * PID_error;
+  //Calculate the I value in a range on +-3
+  if(-3 < PID_error <3)
+  {
+  PID_i = PID_i + (ki * PID_error);
+  }
+
+  //For derivative we need real time to calculate speed change rate
+  timePrev = Time; // the previous time is stored before the actual time read
+  Time = millis(); // actual time read
+  elapsedTime = (Time - timePrev) / 1000;
+  //Now we can calculate the D calue
+  PID_d = kd*((PID_error - previous_error)/elapsedTime);
+  //Final total PID value is the sum of P + I + D
+  PID_value = PID_p + PID_i + PID_d;
+
+  //We define PWM range between 0 and 255
+  if(PID_value < 0)
+  { PID_value = 0; }
+  if(PID_value > 255)
+  { PID_value = 255; }
+  //Now we can write the PWM signal to the mosfet on digital pin D3
+  //analogWrite(steam_pid,255-PID_value); //disabledPWM
+
+  Serial.print (set_temperature);
+  Serial.print (" ");
+  Serial.println (temperature_read);
+
+  if(PID_value > 0)
+  {
+    digitalWrite(steam_pid, HIGH); // sets the digital steam_pid on
+  } else {
+    digitalWrite(steam_pid, LOW);
+  }
+  previous_error = PID_error; //Remember to store the previous error for next loop.
+  delay(300);
+  return previous_error;
+}
+
 void loop()
 {
-// control BREW
-if ( digitalRead(brew_from_PID) )
-{ // pour that coffee
-digitalWrite(pump_brew, HIGH);
-digitalWrite(brew_valve, HIGH);
-} else {
-digitalWrite(pump_brew, LOW);
-digitalWrite(brew_valve, LOW);
-}
+control_BREW();
+control_STEAM_FILL_TANK();
 
-// control STEAM FILL TANK
-if ( digitalRead(steam_fill) )
-{ //fill that steam tank
-digitalWrite(pump_steam, HIGH);
-} else {
-digitalWrite(pump_steam, LOW);
-}
+PID_error = STEAM_TEMP_CONTROL(PID_error);
 
-// STEAM TEMP CONTROL
-
-// determine current temp of steam tank
-ThermValue = analogRead(steam_therm); //raw value from Voltage Divider (0-5)
-temperature_read = (1/((1/298.00)+(1/4100.00)*log(1024.00/ThermValue-1.00)))- 273.00;
-
-//calculate the error between the setpoint and the real value
-PID_error = set_temperature - temperature_read;
-//Calculate the P value
-PID_p = kp * PID_error;
-//Calculate the I value in a range on +-3
-if(-3 < PID_error <3)
-{
-PID_i = PID_i + (ki * PID_error);
-}
-
-//For derivative we need real time to calculate speed change rate
-timePrev = Time; // the previous time is stored before the actual time read
-Time = millis(); // actual time read
-elapsedTime = (Time - timePrev) / 1000;
-//Now we can calculate the D calue
-PID_d = kd*((PID_error - previous_error)/elapsedTime);
-//Final total PID value is the sum of P + I + D
-PID_value = PID_p + PID_i + PID_d;
-
-//We define PWM range between 0 and 255
-if(PID_value < 0)
-{ PID_value = 0; }
-if(PID_value > 255)
-{ PID_value = 255; }
-//Now we can write the PWM signal to the mosfet on digital pin D3
-//analogWrite(steam_pid,255-PID_value); //disabledPWM
-
-Serial.print (set_temperature);
-Serial.print (" ");
-Serial.println (temperature_read);
-
-if(PID_value > 0)
-{
-digitalWrite(steam_pid, HIGH); // sets the digital steam_pid on
-} else {
-digitalWrite(steam_pid, LOW);
-}
-previous_error = PID_error; //Remember to store the previous error for next loop.
-delay(300);
 }
