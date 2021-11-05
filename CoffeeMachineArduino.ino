@@ -114,7 +114,7 @@ int control_STEAM_FILL_TANK()
   return 1;
 }
 
-float STEAM_TEMP_CONTROL(float pid_error)
+float STEAM_TEMP_CONTROL( float PID_error)
 {
   // determine current temp of steam tank
   ThermValue = analogRead(steam_therm); //raw value from Voltage Divider (0-5)
