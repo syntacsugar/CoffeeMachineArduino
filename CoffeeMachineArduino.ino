@@ -8,14 +8,6 @@ Ard ssr
 7 6 gh heater
 8 7 brew led?
 9 8 light
-
-ssr
-1 boiler brew
-a3 2 boiler steam
-inputs
-a1 1 SteBoil Fill sens
-a2 2 NTC steam PID
-a3 3 Steam Pid output
 */
 
 #include <math.h>
@@ -23,9 +15,9 @@ a3 3 Steam Pid output
 //Pins
 //analogue
 int steam_fill = A1;
-int steam_therm = A2;
-int steam_pid = A3; //Steam Pid output
-int brew_from_PID = A4;
+int steam_ntctherm = A0;
+int steam_pid = A2; //Steam Pid output
+int brew_from_PID = A3;
 
 //digitals
 int pump_brew = 3;// pwm
@@ -74,6 +66,7 @@ pinMode(steam_pid, OUTPUT);
 
 pinMode(steam_fill, INPUT);
 pinMode(brew_from_PID, INPUT);
+pinMode(steam_ntctherm, INPUT);
 
 digitalWrite(pump_brew, LOW);
 digitalWrite(pump_steam, LOW);
@@ -117,7 +110,7 @@ int control_STEAM_FILL_TANK()
 float STEAM_TEMP_CONTROL( float PID_error)
 {
   // determine current temp of steam tank
-  ThermValue = analogRead(steam_therm); //raw value from Voltage Divider (0-5)
+  ThermValue = analogRead(steam_ntctherm); //raw value from Voltage Divider (0-5)
   temperature_read = (1/((1/298.00)+(1/4100.00)*log(1024.00/ThermValue-1.00)))- 273.00;
 
   //calculate the error between the setpoint and the real value
@@ -158,15 +151,13 @@ float STEAM_TEMP_CONTROL( float PID_error)
     digitalWrite(steam_pid, LOW);
   }
   previous_error = PID_error; //Remember to store the previous error for next loop.
-  delay(300);
   return previous_error;
 }
 
 void loop()
 {
-control_BREW();
-control_STEAM_FILL_TANK();
-
-PID_error = STEAM_TEMP_CONTROL(PID_error);
-
+  control_BREW();
+  control_STEAM_FILL_TANK();
+  PID_error = STEAM_TEMP_CONTROL(PID_error);
+  delay(300);
 }
