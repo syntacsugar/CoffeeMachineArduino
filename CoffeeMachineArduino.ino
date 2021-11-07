@@ -1,13 +1,13 @@
 /*
-Ard ssr
-3 1 pump brew pwm
-2 2 pump steam
-4 3 3 way valve
-5 4 grinder
-6 5 pid power
-7 6 gh heater
-8 7 brew led?
-9 8 light
+  ArdDIO SSR
+  2   CH7 pump steam
+  3   CH8 pump brew pwm
+  4   CH6 3 way valve
+  5   CH5 grinder
+  6   CH4 pid power
+  7   CH3 gh heater
+  8   CH2 brew led?
+  9   CH8 light
 */
 
 #include <math.h>
@@ -51,58 +51,70 @@ int PID_d = 0;
 
 void setup()
 {
-Serial.begin(9600);
-Serial.println("Coffee Control starting!");
+  Serial.begin(9600);
+  Serial.println(" ");
+  Serial.println(" ");
+  Serial.println(" ");
+  Serial.println(" ");
+  Serial.println(" ");
 
-pinMode(pump_brew, OUTPUT);
-pinMode(pump_steam, OUTPUT);
-pinMode(brew_valve, OUTPUT);
-pinMode(grinder, OUTPUT);
-pinMode(pid_power, OUTPUT);
-pinMode(gh_heater, OUTPUT);
-pinMode(tank_leds, OUTPUT);
-pinMode(light, OUTPUT);
-pinMode(steam_pid, OUTPUT);
+  Serial.println(" ==================================================================");
+  Serial.println(" ");
+  Serial.println("Coffee Control starting!");
 
-pinMode(steam_fill, INPUT);
-pinMode(brew_from_PID, INPUT);
-pinMode(steam_ntctherm, INPUT);
+  pinMode(pump_brew, OUTPUT);
+  pinMode(pump_steam, OUTPUT);
+  pinMode(brew_valve, OUTPUT);
+  pinMode(grinder, OUTPUT);
+  pinMode(pid_power, OUTPUT);
+  pinMode(gh_heater, OUTPUT);
+  pinMode(tank_leds, OUTPUT);
+  pinMode(light, OUTPUT);
+  pinMode(steam_pid, OUTPUT);
 
-digitalWrite(pump_brew, LOW);
-digitalWrite(pump_steam, LOW);
-digitalWrite(brew_valve, LOW);
-digitalWrite(grinder, LOW);
-digitalWrite(pid_power, HIGH);
-digitalWrite(gh_heater, LOW);
-digitalWrite(tank_leds, LOW);
-digitalWrite(light, LOW);
-digitalWrite(steam_pid, LOW);
-Serial.println("Brew PID ON");
+  pinMode(steam_fill, INPUT_PULLUP);
+  pinMode(brew_from_PID, INPUT_PULLUP);
+  pinMode(steam_ntctherm, INPUT);
 
-Time = millis();
+  digitalWrite(pump_brew, LOW);
+  digitalWrite(pump_steam, LOW);
+  digitalWrite(brew_valve, LOW);
+  digitalWrite(grinder, LOW);
+  digitalWrite(pid_power, HIGH);
+  digitalWrite(gh_heater, LOW);
+  digitalWrite(tank_leds, LOW);
+  digitalWrite(light, LOW);
+  digitalWrite(steam_pid, HIGH); //reverse logic
+  Serial.println("Brew PID ON");
+
+  Time = millis();
 
 }
 
 int control_BREW()
-{  
-  if ( digitalRead(brew_from_PID) )
+{
+  if ( digitalRead(brew_from_PID) == 0 )
   { // pour that coffee
     digitalWrite(pump_brew, HIGH);
     digitalWrite(brew_valve, HIGH);
+    Serial.println("Coffee pouring!");
   } else {
     digitalWrite(pump_brew, LOW);
     digitalWrite(brew_valve, LOW);
+    Serial.println("Coffee pouring stopped");
   }
   return 1;
 }
 
 int control_STEAM_FILL_TANK()
 {
-  if ( digitalRead(steam_fill) )
+  if ( digitalRead(steam_fill) == 0 )
   { //fill that steam tank
     digitalWrite(pump_steam, HIGH);
+    Serial.println("steam tank filling!");
   } else {
     digitalWrite(pump_steam, LOW);
+    Serial.println("steam tank stopped filling!");
   }
   return 1;
 }
@@ -111,16 +123,16 @@ float STEAM_TEMP_CONTROL( float PID_error)
 {
   // determine current temp of steam tank
   ThermValue = analogRead(steam_ntctherm); //raw value from Voltage Divider (0-5)
-  temperature_read = (1/((1/298.00)+(1/4100.00)*log(1024.00/ThermValue-1.00)))- 273.00;
+  temperature_read = (1 / ((1 / 298.00) + (1 / 4100.00) * log(1024.00 / ThermValue - 1.00))) - 273.00;
 
   //calculate the error between the setpoint and the real value
   PID_error = set_temperature - temperature_read;
   //Calculate the P value
   PID_p = kp * PID_error;
   //Calculate the I value in a range on +-3
-  if(-3 < PID_error <3)
+  if (-3 < PID_error < 3)
   {
-  PID_i = PID_i + (ki * PID_error);
+    PID_i = PID_i + (ki * PID_error);
   }
 
   //For derivative we need real time to calculate speed change rate
@@ -128,15 +140,19 @@ float STEAM_TEMP_CONTROL( float PID_error)
   Time = millis(); // actual time read
   elapsedTime = (Time - timePrev) / 1000;
   //Now we can calculate the D calue
-  PID_d = kd*((PID_error - previous_error)/elapsedTime);
+  PID_d = kd * ((PID_error - previous_error) / elapsedTime);
   //Final total PID value is the sum of P + I + D
   PID_value = PID_p + PID_i + PID_d;
 
   //We define PWM range between 0 and 255
-  if(PID_value < 0)
-  { PID_value = 0; }
-  if(PID_value > 255)
-  { PID_value = 255; }
+  if (PID_value < 0)
+  {
+    PID_value = 0;
+  }
+  if (PID_value > 255)
+  {
+    PID_value = 255;
+  }
   //Now we can write the PWM signal to the mosfet on digital pin D3
   //analogWrite(steam_pid,255-PID_value); //disabledPWM
 
@@ -144,11 +160,13 @@ float STEAM_TEMP_CONTROL( float PID_error)
   Serial.print (" ");
   Serial.println (temperature_read);
 
-  if(PID_value > 0)
+  if (PID_value > 0)
   {
     digitalWrite(steam_pid, HIGH); // sets the digital steam_pid on
+    Serial.println("steam heating!");
   } else {
     digitalWrite(steam_pid, LOW);
+    Serial.println("steam not heating");
   }
   previous_error = PID_error; //Remember to store the previous error for next loop.
   return previous_error;
@@ -158,6 +176,10 @@ void loop()
 {
   control_BREW();
   control_STEAM_FILL_TANK();
-  PID_error = STEAM_TEMP_CONTROL(PID_error);
-  delay(300);
+  //PID_error = STEAM_TEMP_CONTROL(PID_error);
+  delay(2300);
+  Serial.println(" ");
+  Serial.println(" =========================");
+  Serial.println(" ");
+
 }
