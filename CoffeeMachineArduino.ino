@@ -22,9 +22,9 @@ int brew_from_PID = A3;
 //digitals
 int pump_brew = 3;// pwm
 int pump_steam = 2; // note: switched with brew
-int brew_valve = 4;
-int grinder = 5;
-int pid_power = 6;
+int brew_valve = 4; //
+int pid_power = 5;
+int grinder = 6; 
 int gh_heater = 7;
 int tank_leds = 8;
 int light = 9;
@@ -33,7 +33,7 @@ int light = 9;
 double ThermValue = 0; // Somewhere to stick the raw Analogue Pin Value.
 float temperature_read = 0.0;
 //float set_temperature = 130;
-float set_temperature = 25; //for testing
+float set_temperature = 30; //for testing
 float PID_error = 0;
 float previous_error = 0;
 float elapsedTime, Time, timePrev;
@@ -80,12 +80,12 @@ void setup()
   digitalWrite(pump_steam, LOW);
   digitalWrite(brew_valve, LOW);
   digitalWrite(grinder, LOW);
-  digitalWrite(pid_power, HIGH);
+  //digitalWrite(pid_power, HIGH);
   digitalWrite(gh_heater, LOW);
   digitalWrite(tank_leds, LOW);
   digitalWrite(light, LOW);
-  digitalWrite(steam_pid, HIGH); //reverse logic
-  Serial.println("Brew PID ON");
+  digitalWrite(steam_pid, LOW); 
+  //Serial.println("Brew PID ON");
 
   Time = millis();
 
@@ -174,12 +174,16 @@ float STEAM_TEMP_CONTROL( float PID_error)
 
 void loop()
 {
-  control_BREW();
+  //control_BREW();
   control_STEAM_FILL_TANK();
   //PID_error = STEAM_TEMP_CONTROL(PID_error);
   delay(2300);
   Serial.println(" ");
   Serial.println(" =========================");
   Serial.println(" ");
+  //digitalWrite(pid_power, HIGH); 
+  digitalWrite(pump_brew, HIGH);
+  digitalWrite(brew_valve, HIGH);
+  //digitalWrite(pump_steam, HIGH);
 
 }
