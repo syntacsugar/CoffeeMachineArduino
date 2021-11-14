@@ -19,10 +19,12 @@ int steam_ntctherm = A0;
 int steam_pid = A2; //Steam Pid output
 int brew_from_PID = A3;
 
-// messages
+// message sending variables
 int steam_fill_msg_sent = 0;
 int brew_pid_msg_sent = 0;
 int steam_pid_msg_sent = 0;
+int steam_temp_sent = 0;
+int steam_temp = 0;
 int steam_fill_msg = 0;
 int brew_pid_msg = 0;
 int steam_pid_msg = 0;
@@ -40,8 +42,7 @@ int light = 9;
 //Variables
 double ThermValue = 0; // Somewhere to stick the raw Analogue Pin Value.
 float temperature_read = 0.0;
-//float set_temperature = 130;
-float set_temperature = 30; //for testing
+float set_temperature = 130;
 float PID_error = 0;
 float previous_error = 0;
 float elapsedTime, Time, timePrev;
@@ -65,7 +66,6 @@ void setup()
   Serial.println(" ");
   Serial.println(" ");
   Serial.println(" ");
-
   Serial.println(" ==================================================================");
   Serial.println(" ");
   Serial.println("Coffee Control starting!");
@@ -88,34 +88,31 @@ void setup()
   digitalWrite(pump_steam, LOW);
   digitalWrite(brew_valve, LOW);
   digitalWrite(grinder, LOW);
-  //digitalWrite(pid_power, HIGH);
+  digitalWrite(pid_power, HIGH);
   digitalWrite(gh_heater, LOW);
   digitalWrite(tank_leds, LOW);
   digitalWrite(light, LOW);
   digitalWrite(steam_pid, LOW); 
-  //Serial.println("Brew PID ON");
 
   Time = millis();
 
 }
 
-int control_BREW()
-{
+int control_BREW() {
   if ( digitalRead(brew_from_PID) == 0 )
   { // pour that coffee
     digitalWrite(pump_brew, HIGH);
     digitalWrite(brew_valve, HIGH);
-    Serial.println("Coffee pouring!");
+    brew_pid_msg = 1;
   } else {
     digitalWrite(pump_brew, LOW);
     digitalWrite(brew_valve, LOW);
-    Serial.println("Coffee pouring stopped");
+    brew_pid_msg = 2;
   }
   return 1;
 }
 
-int control_STEAM_FILL_TANK()
-{
+int control_STEAM_FILL_TANK() {
   if ( digitalRead(steam_fill) == 0 )
   { //fill that steam tank
     digitalWrite(pump_steam, HIGH);
@@ -127,8 +124,7 @@ int control_STEAM_FILL_TANK()
   return 1;
 }
 
-float STEAM_TEMP_CONTROL( float PID_error)
-{
+float STEAM_TEMP_CONTROL( float PID_error) {
   // determine current temp of steam tank
   ThermValue = analogRead(steam_ntctherm); //raw value from Voltage Divider (0-5)
   temperature_read = (1 / ((1 / 298.00) + (1 / 4100.00) * log(1024.00 / ThermValue - 1.00))) - 273.00;
@@ -164,50 +160,73 @@ float STEAM_TEMP_CONTROL( float PID_error)
   //Now we can write the PWM signal to the mosfet on digital pin D3
   //analogWrite(steam_pid,255-PID_value); //disabledPWM
 
-  Serial.print (set_temperature);
-  Serial.print (" ");
-  Serial.println (temperature_read);
+  //Serial.print (set_temperature);
+  //Serial.print (" ");
+  //Serial.println (temperature_read);
 
   if (PID_value > 0)
   {
     digitalWrite(steam_pid, HIGH); // sets the digital steam_pid on
-    Serial.println("steam heating!");
+    steam_fill_msg = 1;
   } else {
     digitalWrite(steam_pid, LOW);
-    Serial.println("steam not heating");
+    steam_fill_msg = 2;
   }
   previous_error = PID_error; //Remember to store the previous error for next loop.
   return previous_error;
 }
 
-void loop()
-{
-  //control_BREW();
-  control_STEAM_FILL_TANK();
-  //PID_error = STEAM_TEMP_CONTROL(PID_error);
-  delay(2300);
-  Serial.println(" ");
-  Serial.println(" =========================");
-  Serial.println(" ");
-  //digitalWrite(pid_power, HIGH); 
-  digitalWrite(pump_brew, HIGH);
-  digitalWrite(brew_valve, HIGH);
-  //digitalWrite(pump_steam, HIGH);
-  
-  int steam_fill_msg_sent = 0;
-int brew_pid_msg_sent = 0;
-int steam_pid_msg_sent = 0;
-  if (steam_fill_msg != 0){
+int send_serial_msgs() {
+  if (steam_fill_msg_sent != steam_fill_msg){
     if (steam_fill_msg == 1){
       Serial.println("steam tank filling!");
-      steam_fill_msg = 0;
+      steam_fill_msg_sent = steam_fill_msg;
     }
     if (steam_fill_msg == 2){
       Serial.println("steam tank stopped filling!");
-      steam_fill_msg = 0;
+      steam_fill_msg_sent = steam_fill_msg;
     }
   }
-      
-  brew_pid_msg = 0;
-  steam_pid_msg = 0;
+  
+  if (brew_pid_msg_sent != brew_pid_msg){
+    if (steam_fill_msg == 1){
+      Serial.println("Coffee pouring!");
+      brew_pid_msg_sent = brew_pid_msg;
+    }
+    if (steam_fill_msg == 2){
+      Serial.println("Coffee pouring stopped");
+      brew_pid_msg_sent = brew_pid_msg;
+    }
+  }
+  
+  if (steam_pid_msg_sent != steam_pid_msg){
+    if (steam_fill_msg == 1){
+      Serial.println("steam heating!");
+      steam_pid_msg_sent = steam_pid_msg;
+    }
+    if (steam_fill_msg == 2){
+      Serial.println("steam not heating");
+      steam_pid_msg_sent = steam_pid_msg;
+    }
+  } 
+
+  if (steam_temp_sent != steam_temp){
+    Serial.print("Steam Temp : ");
+    Serial.print (set_temperature);
+    Serial.print (" ");
+    Serial.println (temperature_read);
+    steam_temp_sent = steam_temp;
+  }
+  return 1;
+}
+
+void loop()
+{
+  control_BREW(); //sense brew from coffee pid
+  
+  control_STEAM_FILL_TANK(); // disconnect power from arduino
+  
+  PID_error = STEAM_TEMP_CONTROL(PID_error); //steam pid
+
+  send_serial_msgs(); //send messages if statuses change
 }
