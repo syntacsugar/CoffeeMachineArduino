@@ -19,6 +19,14 @@ int steam_ntctherm = A0;
 int steam_pid = A2; //Steam Pid output
 int brew_from_PID = A3;
 
+// messages
+int steam_fill_msg_sent = 0;
+int brew_pid_msg_sent = 0;
+int steam_pid_msg_sent = 0;
+int steam_fill_msg = 0;
+int brew_pid_msg = 0;
+int steam_pid_msg = 0;
+
 //digitals
 int pump_brew = 3;// pwm
 int pump_steam = 2; // note: switched with brew
@@ -111,10 +119,10 @@ int control_STEAM_FILL_TANK()
   if ( digitalRead(steam_fill) == 0 )
   { //fill that steam tank
     digitalWrite(pump_steam, HIGH);
-    Serial.println("steam tank filling!");
+    steam_fill_msg = 1;
   } else {
     digitalWrite(pump_steam, LOW);
-    Serial.println("steam tank stopped filling!");
+    steam_fill_msg = 2;
   }
   return 1;
 }
@@ -185,5 +193,21 @@ void loop()
   digitalWrite(pump_brew, HIGH);
   digitalWrite(brew_valve, HIGH);
   //digitalWrite(pump_steam, HIGH);
-
+  
+  int steam_fill_msg_sent = 0;
+int brew_pid_msg_sent = 0;
+int steam_pid_msg_sent = 0;
+  if (steam_fill_msg != 0){
+    if (steam_fill_msg == 1){
+      Serial.println("steam tank filling!");
+      steam_fill_msg = 0;
+    }
+    if (steam_fill_msg == 2){
+      Serial.println("steam tank stopped filling!");
+      steam_fill_msg = 0;
+    }
+  }
+      
+  brew_pid_msg = 0;
+  steam_pid_msg = 0;
 }
