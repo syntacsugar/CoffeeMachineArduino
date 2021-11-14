@@ -211,7 +211,7 @@ int send_serial_msgs() {
   } 
 
   if (steam_temp_sent != steam_temp){
-    Serial.print("Steam Temp : ");
+    Serial.print("Steam Temp update : ");
     Serial.print (set_temperature);
     Serial.print (" ");
     Serial.println (temperature_read);
@@ -222,11 +222,11 @@ int send_serial_msgs() {
 
 void loop()
 {
+  send_serial_msgs(); //send messages if statuses change
+  
   control_BREW(); //sense brew from coffee pid
   
   control_STEAM_FILL_TANK(); // disconnect power from arduino
   
   PID_error = STEAM_TEMP_CONTROL(PID_error); //steam pid
-
-  send_serial_msgs(); //send messages if statuses change
 }
