@@ -88,7 +88,7 @@ void setup()
   digitalWrite(pump_steam, LOW);
   digitalWrite(brew_valve, LOW);
   digitalWrite(grinder, LOW);
-  digitalWrite(pid_power, HIGH);
+  //digitalWrite(pid_power, HIGH);
   digitalWrite(gh_heater, LOW);
   digitalWrite(tank_leds, LOW);
   digitalWrite(light, LOW);
@@ -104,22 +104,25 @@ int control_BREW() {
     digitalWrite(pump_brew, HIGH);
     digitalWrite(brew_valve, HIGH);
     brew_pid_msg = 1;
-  } else {
+  } else if ( digitalRead(brew_from_PID) == 1 ) {
     digitalWrite(pump_brew, LOW);
     digitalWrite(brew_valve, LOW);
     brew_pid_msg = 2;
+  } else {
+    brew_pid_msg = 3;
   }
   return 1;
 }
 
 int control_STEAM_FILL_TANK() {
-  if ( digitalRead(steam_fill) == 0 )
-  { //fill that steam tank
+  if ( digitalRead(steam_fill) == 0 ){ //fill that steam tank
     digitalWrite(pump_steam, HIGH);
     steam_fill_msg = 1;
-  } else {
+  } else if ( digitalRead(steam_fill) == 1 ) {
     digitalWrite(pump_steam, LOW);
     steam_fill_msg = 2;
+  } else {
+    steam_fill_msg = 3;
   }
   return 1;
 }
@@ -179,11 +182,11 @@ float STEAM_TEMP_CONTROL( float PID_error) {
 int send_serial_msgs() {
   if (steam_fill_msg_sent != steam_fill_msg){
     if (steam_fill_msg == 1){
-      Serial.println("steam tank filling!");
+      Serial.println("Steam tank filling!");
       steam_fill_msg_sent = steam_fill_msg;
     }
     if (steam_fill_msg == 2){
-      Serial.println("steam tank stopped filling!");
+      Serial.println("Steam tank stopped filling!");
       steam_fill_msg_sent = steam_fill_msg;
     }
   }
@@ -197,6 +200,10 @@ int send_serial_msgs() {
       Serial.println("Coffee pouring stopped");
       brew_pid_msg_sent = brew_pid_msg;
     }
+    if (steam_fill_msg == 3){
+      Serial.println("Coffee pouring status STALE");
+      brew_pid_msg_sent = brew_pid_msg;
+    }
   }
   
   if (steam_pid_msg_sent != steam_pid_msg){
@@ -206,6 +213,10 @@ int send_serial_msgs() {
     }
     if (steam_fill_msg == 2){
       Serial.println("steam not heating");
+      steam_pid_msg_sent = steam_pid_msg;
+    }
+    if (steam_fill_msg == 3){
+      Serial.println("steam heating status STALE");
       steam_pid_msg_sent = steam_pid_msg;
     }
   } 
@@ -226,7 +237,7 @@ void loop()
   
   control_BREW(); //sense brew from coffee pid
   
-  control_STEAM_FILL_TANK(); // disconnect power from arduino
+  //control_STEAM_FILL_TANK(); // disconnect power from arduino
   
   PID_error = STEAM_TEMP_CONTROL(PID_error); //steam pid
 }
